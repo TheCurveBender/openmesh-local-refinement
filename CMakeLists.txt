@@ -10,3 +10,4 @@ include_directories(${OPENMESH_INCLUDE_DIR})
 set(SOURCE_FILES main.cpp)
 add_executable(openmesh-local-rivara ${SOURCE_FILES})
 target_link_libraries(openmesh-local-rivara ${CMAKE_DL_LIBS} ${OPENMESH_LIBRARIES})
+
