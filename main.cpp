@@ -45,19 +45,19 @@ TrianglePoints triangle_points(const Mesh& mesh, const Mesh::FaceHandle& triangl
     return t;
 }
 
-void refine(Mesh& m, vector<Mesh::FaceHandle> faces) {
+void refine(Mesh& m, set<Mesh::FaceHandle> faces) {
     IrregularEdges irregular_edges;
 
     while (!faces.empty() || !irregular_edges.empty()) {
         if (faces.empty() && !irregular_edges.empty()) {
             for (const auto i : irregular_edges) {
                 const auto& edge = i.first;
-                faces.push_back(m.face_handle(m.find_halfedge(edge.first, edge.second)));
+                faces.insert(m.face_handle(m.find_halfedge(edge.first, edge.second)));
             }
         }
 
-        const auto f = faces.back();
-        faces.pop_back();
+        const auto f = *faces.begin();
+        faces.erase(f);
 
         // determine longest edge
         const auto t = triangle_points(m, f);
@@ -73,6 +73,7 @@ void refine(Mesh& m, vector<Mesh::FaceHandle> faces) {
         const auto midpoint = repair ? irregular_edges[edge]
                                      : m.add_vertex((left.point + right.point) / 2.0);
         const auto& opposite = t[(e + 2) % t.size()];
+
         m.delete_face(f, false);
         m.add_face(opposite.vertex, left.vertex, midpoint);
         m.add_face(opposite.vertex, midpoint, right.vertex);
@@ -84,22 +85,22 @@ void refine(Mesh& m, vector<Mesh::FaceHandle> faces) {
                 m.set_texcoord2D(midpoint, (m.texcoord2D(edge.first) + m.texcoord2D(edge.second)) / 2.0);
             }
 
-            const auto opposite_halfedge = m.find_halfedge(edge.second, edge.first);
-            if (opposite_halfedge.is_valid() && !m.is_boundary(opposite_halfedge)) {
+            const auto opposite_half_edge = m.find_halfedge(edge.second, edge.first);
+            if (opposite_half_edge.is_valid() && !m.is_boundary(opposite_half_edge)) {
                 irregular_edges.insert(make_pair(make_pair(edge.second, edge.first), midpoint));
-                faces.push_back(m.face_handle(opposite_halfedge));
+                faces.insert(m.face_handle(opposite_half_edge));
             }
         }
     }
 
     m.garbage_collection();
 }
-
 void test_vertex_split() {
     Mesh m;
 
     vector<Mesh::VertexHandle> v{m.add_vertex({0, 0, 0}), m.add_vertex({1, -2, 0}),
                                  m.add_vertex({2,0,0}), m.add_vertex({1,1,0})};
+    m.request_edge_status();
     m.request_face_status();
     m.request_vertex_texcoords2D();
 
@@ -120,3 +121,4 @@ int main() {
     test_vertex_split();
     return 0;
 }
+
